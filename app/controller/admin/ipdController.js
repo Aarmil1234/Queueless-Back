@@ -61,7 +61,9 @@ const moveToIpd = async (req, res) => {
             patientName: appointment.fullName,
             bedNumber: newIpd.bedNumber,
             wardType: newIpd.wardType,
-            admissionDate: newIpd.ipdAdmissionDate
+            admissionDate: newIpd.ipdAdmissionDate,
+            appointmentId: appointment._id,
+            appointmentDetailId: appointmentDetail ? appointmentDetail._id : null,
         });
     } catch (error) {
         console.error('Error moving to IPD:', error);
@@ -71,26 +73,63 @@ const moveToIpd = async (req, res) => {
 
 const addIpdInstructionByDoctor = async (req, res) => {
     try {
-        const { doctorId, ipdId, instructions, instructionDate} = req.body;
+        const { 
+            doctorId, 
+            ipdId, 
+            complaints,
+            prescriptions,
+            labInvestigations,
+            advice,
+            remarks,
+            totalDays = 15
+        } = req.body;
 
+        // Check if IPD record exists
         const ipd = await IPD.findById(ipdId);
         if (!ipd) {
             return errorResponse(res, 'IPD patient not found');
         }
 
-        const ipdDetails = {
-            ipdId : ipd._id,
-            instructions : instructions,
-            doctorId: ipd.doctorId,
-            instructionDate: instructionDate
+        // Handle file upload if exists
+        let labReportPath = '';
+        if (req.file && req.file.publicUrl) {
+            // Use the public URL set by the upload middleware
+            labReportPath = req.file.publicUrl;
+            console.log('Using uploaded file:', labReportPath);
         }
 
-        const newIpdDetails = await IpdDetail.create(ipdDetails);
+        // Parse prescriptions if it's a string (for form-data)
+        let parsedPrescriptions = [];
+        if (prescriptions) {
+            try {
+                parsedPrescriptions = typeof prescriptions === 'string' 
+                    ? JSON.parse(prescriptions) 
+                    : prescriptions;
+            } catch (e) {
+                console.error('Error parsing prescriptions:', e);
+                return errorResponse(res, 'Invalid prescriptions format');
+            }
+        }
+
+        const ipdDetailsData = {
+            ipdId: ipd._id,
+            doctorId: doctorId || ipd.doctorId,
+            instructionDate: new Date(),
+            complaints: complaints || '',
+            prescriptions: parsedPrescriptions,
+            labInvestigations: labInvestigations || '',
+            labReportFile: labReportPath,
+            advice: advice || '',
+            remarks: remarks || '',
+            totalDays: parseInt(totalDays) || 15
+        };
+
+        const newIpdDetails = await IpdDetail.create(ipdDetailsData);
         
-        return successResponse(res, 'Instructions added successfully', newIpdDetails);
+        return successResponse(res, 'Prescription added successfully', newIpdDetails);
     } catch (error) {
-        console.error('Error adding instructions:', error);
-        return errorResponse(res, 'Error adding instructions: ' + error.message);
+        console.error('Error adding prescription:', error);
+        return errorResponse(res, 'Error adding prescription: ' + error.message);
     }
 }
 
@@ -278,7 +317,18 @@ const dischargeIpdPatient = async (req, res) => {
     }
 };
 
+const getAllIpdInstructions = async (req, res) => {
+    try {
+        const ipdId = req.params.ipdId;
+        const ipdInstructions = await IpdDetail.find({ ipdId: ipdId, delete: false })
+            .sort({ create: -1 });
 
+        return successResponse(res, 'Ipd instructions retrieved successfully', ipdInstructions);
+    } catch (error) {
+        console.error('Error getting IPD instructions:', error);
+        return errorResponse(res, 'Error getting IPD instructions: ' + error.message);
+    }
+}
 
 module.exports = {
     moveToIpd,
@@ -289,5 +339,6 @@ module.exports = {
     getIpdPatientById,
     updateIpdPatient,
     getAllIpd,
-    dischargeIpdPatient
+    dischargeIpdPatient,
+    getAllIpdInstructions
 }

@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const adminController = require('./adminController.js');
+const appointmentController = require('./appointmentController.js');
 const adminValidation = require('./adminValidation.js');
 const { validate } = require('../../helper/index.js');
 const authenticate = require('../../middleware/auth.js');
@@ -56,6 +57,8 @@ router.post('/addappointmentv2', adminController.addAppointmentV2);
 router.post('/deleteappointment', adminController.deleteAppointment);
 router.post('/getappointmentswithdetails', adminController.getAppointmentsWithDetails); // corrected the route to lowercase
 router.post('/getappointmentsdata', adminController.getAppointmentsData); // corrected the route to lowercase
+router.post('/checkIn', appointmentController.checkInAppointment);
+router.post('/checkOut', appointmentController.checkOutAppointment);
 
 router.post('/addeditsetting', adminController.addeditSetting); // corrected the route to lowercase
 router.post('/getsettings', adminController.getSettings); // corrected the route to lowercase

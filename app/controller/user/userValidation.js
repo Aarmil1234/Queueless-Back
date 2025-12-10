@@ -29,9 +29,6 @@ const addEditUser = Joi.object({
 const login = Joi.object({
     mobileNumber: Joi.string().required().messages({
         'string.empty': 'Mobile number is required'
-    }),
-    password: Joi.string().optional().messages({
-        'string.empty': 'Password is required'
     })
 });
 
