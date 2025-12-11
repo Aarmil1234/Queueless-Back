@@ -15,7 +15,7 @@ const appointmentdetailSchema = new mongoose.Schema({
     labReports: { type: String, required: false, default: "" },
     doctorRemarks: { type: String, required: false, default: "" },
     nextAppointmentDate: { type: Date, required: false, default: "" },
-    status: { type: String, required: false, enum: ["Ongoing", "Completed"], default: "Regular" },
+    status: { type: String, required: false, enum: ["Regular", "Ongoing", "Completed"], default: "Regular" },
 
     duration: { type: String, required: false },
     appointmentDate: { type: Date, required: false },
