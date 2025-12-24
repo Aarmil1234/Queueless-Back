@@ -140,6 +140,7 @@ const getAppointmentDetails = async (appointmentId) => {
                     _id: 1,
                     appointmentDate: '$appointmentDetails.appointmentDate',
                     appointmentTime: '$appointmentDetails.appointmentTime',
+                    cancelReason: '$appointmentDetails.cancelReason',
                     status: '$appointmentDetails.status',
                     isEmergency: '$appointmentDetails.isEmergency',
                     disease: '$appointmentDetails.disease',

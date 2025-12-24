@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ipdController = require("../controller/admin/ipdController");
+const uploadFile = require("../../middleware/upload");
 
 router.post('/moveToIpd', ipdController.moveToIpd);
 
@@ -18,7 +19,8 @@ router.put('/patients/:ipdId', ipdController.updateIpdPatient);
 // Discharge IPD patient
 router.post('/patients/:ipdId/discharge', ipdController.dischargeIpdPatient);
 
-router.post('/addInstructions', ipdController.addIpdInstructionByDoctor);
+router.get('/getAllIpdInstructions/:ipdId', ipdController.getAllIpdInstructions);
+router.post('/addInstructions', uploadFile, ipdController.addIpdInstructionByDoctor);
 router.get('/getIpdDetails/:ipdId', ipdController.getIpdDetails);
 router.post('/dischargePatient', ipdController.dischargePatient);
 module.exports = router;

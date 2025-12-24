@@ -34,7 +34,9 @@ router.use(express.json()); // Parses JSON requests
 
 // Define the register route
 router.post('/addedituser', uploadProfile.single('profile'), validate(validation.addEditUser), controller.addEditUser);
-router.post('/login', validate(validation.login), controller.login);
+// router.post('/register', );
+router.post('/login', controller.login);
+router.post('/registerationOtp', controller.registrationOtp);
 router.post('/verifyotp', controller.verifyOtp);
 router.post('/userprofile', controller.userProfile);
 router.post("/searchDoctorsAndHospitalsByName", controller.searchDoctorsAndHospitalsByName);

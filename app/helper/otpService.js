@@ -78,6 +78,8 @@ async function verifyOtpDB(mobileNumber, otp) {
     try {
         const otpVerification = await OtpVerification.findOne({ mobileNumber });
         if (!otpVerification) {
+            //inceremept attempts
+            await OtpVerification.findOneAndUpdate({ mobileNumber }, { $inc: { attempts: 1 } }, { upsert: true });
             return {
                 status : false,
                 message : "Generate OTP first"

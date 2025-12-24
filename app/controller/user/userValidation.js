@@ -8,10 +8,10 @@ const addEditUser = Joi.object({
         'string.email': 'Valid email is required',
         'string.empty': 'Email is required'
     }),
-    password: Joi.string().min(6).required().messages({
-        'string.min': 'Password must be at least 6 characters long',
-        'string.empty': 'Password is required'
-    }),
+    // password: Joi.string().min(6).required().messages({
+    //     'string.min': 'Password must be at least 6 characters long',
+    //     'string.empty': 'Password is required'
+    // }),
     mobileNumber: Joi.string().optional(),
     address: Joi.string().optional(),
     dob: Joi.date().optional(),
@@ -29,9 +29,6 @@ const addEditUser = Joi.object({
 const login = Joi.object({
     mobileNumber: Joi.string().required().messages({
         'string.empty': 'Mobile number is required'
-    }),
-    password: Joi.string().optional().messages({
-        'string.empty': 'Password is required'
     })
 });
 

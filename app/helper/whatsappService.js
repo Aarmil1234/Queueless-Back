@@ -43,6 +43,27 @@ async function sendWhatsAppMessages(appointmentType, numbers, data) {
       ];
       break;
 
+    case "reminderAppontment3":
+      campaignName = "appointment_reminder_3_v2";
+      templateParams = [
+        data.patientName,
+        data.doctorName,
+        data.hospitalAddress,
+        data.bookingTime,
+        data.bookingDate
+      ]
+
+    case "cancelAppointmentByPatient": 
+      campaignName = "cancel_appointment_by_patient";
+      templateParams = [
+        data.patientName,
+        data.doctorName,
+        data.hospitalAddress,
+        data.bookingDate,
+        data.cancelReason
+      ];
+      break;
+
     case "shiftAppointment":
       campaignName = "appointment_shift_v2"; 
       templateParams = [
@@ -74,6 +95,7 @@ async function sendWhatsAppMessages(appointmentType, numbers, data) {
         field_2: templateParams[1] || "",
         field_3: templateParams[2] || "",
         field_4: templateParams[3] || "",
+        field_5: templateParams[4] || "",
         contact: {
           first_name: templateParams[0] || "User",
           last_name: "",

@@ -36,7 +36,7 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
     fullName: { type: String, required: false },
     password: { type: String, required: false },
-    mobileNumber: { type: String, required: false },
+    mobileNumber: { type: String, required: true },
     dob: { type: Date, required: false },
     gender: { type: String, enum: ["MALE", "FEMALE", "OTHER"], required: false, default: "MALE" },
     address: { type: String, required: false },

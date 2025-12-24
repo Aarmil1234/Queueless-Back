@@ -21,6 +21,7 @@ const { sendWhatsAppMessages } = require('../../helper/whatsappService');
 const { sendOTP } = require('../../helper/otpService');
 const { successResponse, errorResponse, saveModel, selectdata, selectdatv2, updateModel, selectdatawithjoin } = require('../../helper/index');
 const appointmentdetail = require('../../model/appointmentdetail');
+const appointment = require('../../model/appointment');
 
 const test = async (req, res) => {
     try {
@@ -157,20 +158,20 @@ const adminProfile = async (req, res) => {
 // add hostpital
 const addHospital = async (req, res) => {
     try {
-        const { 
-            ownerName, 
-            socialMediaLinks = '', 
-            name = '', 
-            type, 
-            email, 
-            mobileNumber = '', 
-            address = '', 
+        const {
+            ownerName,
+            socialMediaLinks = '',
+            name = '',
+            type,
+            email,
+            mobileNumber = '',
+            address = '',
             city = '',
             state = '',
             pincode = '',
-            latitude = '', 
-            longitude = '', 
-            content = '[]', 
+            latitude = '',
+            longitude = '',
+            content = '[]',
             password = '',
             specialization,
         } = req.body;
@@ -193,7 +194,7 @@ const addHospital = async (req, res) => {
 
         let specializations = [];
         const specializationModel = require('../../model/specialization');
-        
+
         if (type === 'Multispeciality' && Array.isArray(specialization)) {
             specializations = specialization;
         } else if (type === 'Speciality' && specialization) {
@@ -214,23 +215,23 @@ const addHospital = async (req, res) => {
         }
 
         // Prepare hospital data
-        const hospitalData = { 
-            ownerName, 
-            socialMediaLinks, 
-            name, 
-            email, 
-            mobileNumber, 
+        const hospitalData = {
+            ownerName,
+            socialMediaLinks,
+            name,
+            email,
+            mobileNumber,
             address,
             city,
             state,
             pincode,
-            latitude, 
-            longitude, 
+            latitude,
+            longitude,
             type,
             specialization: specializations, // Store array of specialization IDs
             otherSpecialization, // Store custom text if any
             content: contentJson,
-            password: password ? md5(password) : undefined 
+            password: password ? md5(password) : undefined
         };
         if (profile.length != 0) {
             hospitalData['profile'] = `admin/profiles/` + profile[0]['filename']
@@ -1582,9 +1583,19 @@ const getSlotsDetails = async (req, res) => {
 
         let averageDuration = doctorDetails.averageAppointmentTime;
 
+        // Create start and end of day for the given date
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
         const appointments = await appointmentdetail.find({
             doctorId,
-            appointmentDate: date,
+            appointmentDate: {
+                $gte: startOfDay,
+                $lt: endOfDay
+            },
             delete: false
         });
 
@@ -2020,7 +2031,7 @@ const getAppointmentsWithDetails = async (req, res) => {
 
         if (appointmentId) {
             matchConditions._id = mongoose.Types.ObjectId(appointmentId);
-        }   
+        }
 
         if (status && ["Ongoing", "Completed"].includes(status)) {
             matchConditions.status = status;
@@ -2483,7 +2494,6 @@ const editAppointmentDetailsV2 = async (req, res) => {
             // outTime,
             // disease,
             // isEmergency,
-
             chiefComplaints,
             probableDiagnosis,
             prescriptionList,
@@ -2491,7 +2501,6 @@ const editAppointmentDetailsV2 = async (req, res) => {
             labReports,
             doctorRemarks,
             nextAppointmentDate
-
         } = req.body;
 
         const labReportFile = req.file || null;
@@ -2723,7 +2732,7 @@ const getAllSpecializations = async (req, res) => {
     try {
         // Get all hospital specializations (array of specialization IDs)
         const hospitals = await hospitalModel.find({ delete: false }, { specialization: 1 });
-        
+
         // Get all specialization IDs from hospitals
         const specializationIds = [
             ...new Set(
@@ -2750,6 +2759,76 @@ const getAllSpecializations = async (req, res) => {
         res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 };
+
+const cancelAppointmentCallout = async (req, res) => {
+    try {
+        const { appointmentId, cancelReason } = req.body;
+
+        if (!appointmentId) {
+            return res.status(400).json({
+                success: false,
+                message: "Appointment ID is required"
+            });
+        }
+
+        // Convert string ID to ObjectId for both queries
+        const appointmentObjId = new mongoose.Types.ObjectId(appointmentId);
+
+        // Update the appointment
+        const appointmentUpdate = await appointment.updateOne(
+            { _id: appointmentObjId },
+            {
+                $set: {
+                    delete: true,
+                    update: new Date()
+                }
+            }
+        );
+
+        // Update all related appointment details
+        const detailsUpdate = await appointmentdetail.updateMany(
+            { 
+                appointmentId: appointmentObjId,
+                delete: { $ne: true } // Only update if not already deleted
+            },
+            {
+                $set: {
+                    cancelReason: cancelReason || "",
+                    delete: true,
+                    update: new Date()
+                }
+            }
+        );
+        
+        const appointmentFullDetails = await getAppointmentDetails(appointmentId);
+
+        const whatsappMessageData = {
+            patientName: appointmentFullDetails.patient.fullName,
+            doctorName: appointmentFullDetails.doctor.name,
+            hospitalAddress: appointmentFullDetails.hospital.address + ", " + appointmentFullDetails.hospital.city + ", " + appointmentFullDetails.hospital.state + ", " + appointmentFullDetails.hospital.pincode,
+            bookingDate: formatBookingTime(appointmentFullDetails.appointmentDate, appointmentFullDetails.appointmentTime),
+            cancelReason: appointmentFullDetails.cancelReason
+        }
+        await sendWhatsAppMessages("cancelAppointmentByPatient",[appointmentFullDetails.patient.mobileNumber], whatsappMessageData)
+
+        return res.status(200).json({
+            success: true,
+            message: "Appointment cancelled successfully",
+            data: {
+                appointment: appointmentUpdate,
+                details: detailsUpdate
+            }
+        });
+
+    } catch (error) {
+        console.error("Error cancelling appointment:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error",
+            error: error.message 
+        });
+    }
+}
 
 module.exports = {
     test,
@@ -2780,5 +2859,6 @@ module.exports = {
     hospitalView,
     editAppointmentDetailsV2,
     getSlotsDetails,
-    getAllSpecializations
+    getAllSpecializations,
+    cancelAppointmentCallout
 }

@@ -91,36 +91,49 @@ const getTomorrowsAppointments = async (days) => {
 };
 
 // Function to send reminders for tomorrow's appointments
-const sendAppointmentReminders = async (days) => {
+const sendAppointmentReminders = async (days, appointmentType) => {
     try {
         console.log('Starting appointment reminder job...');
         const appointments = await getTomorrowsAppointments(days);
-        
+
         for (const appointment of appointments) {
             try {
                 const bookingTime = formatBookingTime(appointment.appointmentDate, appointment.appointmentTime);
                 const hospitalAddress = `${appointment.hospital.address}, ${appointment.hospital.city}, ${appointment.hospital.state} ${appointment.hospital.pincode}`;
-                
-                const whatsappMessageData = {
-                    patientName: appointment.patient.fullName,
-                    doctorName: appointment.doctor.name,
-                    hospitalAddress: hospitalAddress,
-                    bookingTime: bookingTime
-                };
 
-                await sendWhatsAppMessages("reminderAppointment", [appointment.patient.mobileNumber], whatsappMessageData);
+                let whatsappMessageData;
+
+                if (appointmentType === "reminderAppointment") {
+                    whatsappMessageData = {
+                        patientName: appointment.patient.fullName,
+                        doctorName: appointment.doctor.name,
+                        hospitalAddress: hospitalAddress,
+                        bookingTime: bookingTime
+                    }
+                }
+                else {
+                    whatsappMessageData = {
+                        patientName: appointment.patient.fullName,
+                        doctorName: appointment.doctor.name,
+                        hospitalAddress: hospitalAddress,
+                        bookingDate: appointment.appointmentDate,
+                        bookingReason: appointment?.cancelReason
+                    }
+                }
+
+                await sendWhatsAppMessages(appointmentType, [appointment.patient.mobileNumber], whatsappMessageData);
                 console.log(`Reminder sent for appointment ${appointment._id} to ${appointment.patient.mobileNumber}`);
-                
+
                 // Add a small delay between messages to avoid rate limiting
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                
+
             } catch (error) {
                 console.error(`Error sending reminder for appointment ${appointment._id}:`, error);
                 // Continue with the next appointment if one fails
                 continue;
             }
         }
-        
+
         console.log(`Completed sending reminders. Processed ${appointments.length} appointments.`);
         return { success: true, processed: appointments.length };
     } catch (error) {
@@ -135,7 +148,8 @@ const initAppointmentReminderCron = () => {
     cron.schedule('* * * * *', async () => {
         console.log('Running daily appointment reminder job...');
         try {
-            await sendAppointmentReminders(1);
+            await sendAppointmentReminders(1, "reminderAppointment");
+            await sendAppointmentReminders(3, "reminderAppontment3");
         } catch (error) {
             console.error('Error in appointment reminder cron job:', error);
         }

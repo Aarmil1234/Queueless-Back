@@ -15,11 +15,11 @@ const appointmentdetailSchema = new mongoose.Schema({
     labReports: { type: String, required: false, default: "" },
     doctorRemarks: { type: String, required: false, default: "" },
     nextAppointmentDate: { type: Date, required: false, default: "" },
-    status: { type: String, required: false, enum: ["Ongoing", "Completed"], default: "Ongoing" },
+    status: { type: String, required: false, enum: ["Regular", "Ongoing", "Completed"], default: "Regular" },
 
     duration: { type: String, required: false },
     appointmentDate: { type: Date, required: false },
-    appointmentTime: { type: String, required: false },
+    appointmentTime: { type: String, require: false },
     startTime: { type: String, required: false },
     endTime: { type: String, required: false },
     inTime: { type: String, required: false },
@@ -31,6 +31,7 @@ const appointmentdetailSchema = new mongoose.Schema({
     amount: { type: String, required: false },
     payableAmount: { type: String, required: false },
 
+    cancelReason : { type: String, required: false },
     create: { type: Date, default: Date.now },
     update: { type: Date, default: Date.now },
     delete: { type: Boolean, default: false },

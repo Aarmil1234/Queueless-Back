@@ -8,6 +8,7 @@ const { sendOTP, verifyOtpDB } = require('../../helper/otpService');
 const { successResponse, errorResponse, saveModel, selectdata, selectdatv2, updateModel } = require('../../helper/index');
 const doctorModel = require('../../model/doctor');
 const hospitalModel = require('../../model/hospital');
+const user = require('../../model/user');
 
 // POST route to create or edit an user
 const addEditUser = async (req, res) => {
@@ -56,14 +57,14 @@ const addEditUser = async (req, res) => {
             return successResponse(res, 'User updated successfully', updatedUser);
         } else {
             // Check if email or mobile number already exists
-            let existingUser = await userModel.findOne({ $or: [{ email }, { mobileNumber }] });
+            let existingUser = await userModel.findOne({ $or: [ { mobileNumber }] });
             if (existingUser) {
                 return errorResponse(res, 'User with this email or mobile number already exists');
             }
 
             // Hash the password using MD5
-            field.password = md5(password);
             const savedUser = await saveModel(userModel, field);
+            await sendOTP(field.mobileNumber);
             return successResponse(res, 'User created successfully', savedUser);
         }
     } catch (error) {
@@ -84,15 +85,15 @@ const login = async (req, res) => {
             // password: md5(password)
         });
         if (!user) {
-            return errorResponse(res, 'Invalid credentials');
+            return errorResponse(res, 'User not found');
         }
 
         const response = await sendOTP(user.mobileNumber);
         console.log(response);
         if (response.success) {
-            return successResponse(res, 'Login successful', user);
+            return successResponse(res, 'Otp Send Succesfully', user);
         }
-        return errorResponse(res, response);
+        return errorResponse(res, 'Error logging in');
     } catch (error) {
         console.error('Error logging in:', error);
         return errorResponse(res, error);
@@ -125,14 +126,42 @@ const verifyOtp = async (req, res) => {
     let otp = req.body.otp || "";
 
     try {
-        const response = await verifyOtpDB(mobileNumber, otp);
-        if (response.status) {
-            return successResponse(res, 'Login successful', response);
+        let response = await verifyOtpDB(mobileNumber, otp);
+        const user = await userModel.findOne({ mobileNumber: mobileNumber });
+        if (!req.body.isRegister) {
+            if (!user) {
+                return errorResponse(res, 'User not found');
+            }
+            response.userDetails = user;
         }
-        return errorResponse(res, response.message);
+        response.userDetails = user;
+
+        if (response.status) {
+            return successResponse(res, 'Otp Verified Successfully', response);
+        }else{
+            return errorResponse(res, 'Otp Verification Failed!');
+        }
     } catch (error) {
         console.error('Error logging in:', error);
         return errorResponse(res, 'Error logging in');
+    }
+}
+
+const registrationOtp = async (req, res) => {
+    try {
+        const { mobileNumber } = req.body;
+        const userDetails = await user.findOne({ mobileNumber: mobileNumber });
+        let response;
+        if (!userDetails) {
+            return errorResponse(res, "User is not registered yet!");
+        }
+        response = await sendOTP(mobileNumber);
+        console.log(response);
+        if (response.success) {
+            return successResponse(res, 'Otp for registration is sent successfully');
+        }
+    } catch (e) {
+        return errorResponse(res, "Error while sending otp");
     }
 }
 
@@ -183,5 +212,6 @@ module.exports = {
     login,
     userProfile,
     verifyOtp,
+    registrationOtp,
     searchDoctorsAndHospitalsByName
 }
