@@ -1,14 +1,16 @@
 const { successResponse, errorResponse } = require("../../helper");
 const {
-    addDefaultParameterRangeDb,
-    getDefaultParameterRangeByParameterIdDb,
-    updateDefaultParameterRangeDb,
-    getSingleParameterRangeByIdDb,
-    deleteDefaultParameterRangeDb
-} = require("../../db/defaultParameterRange");
+    addHospitalParameterRangeDb,
+    getHospitalParameterRangesByParameterIdDb,
+    updateHospitalParameterRangeDb,
+    getHospitalParameterRangeByIdDb,
+    deleteHospitalParameterRangeDb,
+    getAllHospitalParameterRangesDb
+} = require("../../db/hospitalCustomParameterRange");
 
-const sanitizeDefaultParameterRange = (payload = {}) => {
+const sanitizeHospitalParameterRange = (payload = {}) => {
     const sanitized = {
+        ...(payload.hospitalId && { hospitalId: payload.hospitalId }),
         ...(payload.parameterId && { parameterId: payload.parameterId }),
         ...(payload.gender && {
             gender: String(payload.gender).toUpperCase()
@@ -29,6 +31,7 @@ const sanitizeDefaultParameterRange = (payload = {}) => {
             isActive: Boolean(payload.isActive)
         })
     };
+
     // Additional validation
     if (sanitized.ageTo !== null && sanitized.ageFrom > sanitized.ageTo) {
         throw new Error('ageTo must be greater than ageFrom');
@@ -36,16 +39,17 @@ const sanitizeDefaultParameterRange = (payload = {}) => {
     if (sanitized.minValue > sanitized.maxValue) {
         throw new Error('maxValue must be greater than minValue');
     }
-    if (!['MALE', 'FEMALE', 'BOTH'].includes(sanitized.gender)) {
+    if (sanitized.gender && !['MALE', 'FEMALE', 'BOTH'].includes(sanitized.gender)) {
         throw new Error('gender must be one of: MALE, FEMALE, BOTH');
     }
     return sanitized;
 };
 
-async function addDefaultParameterRange(req, res) {
+// Add a new hospital parameter range
+async function addHospitalParameterRange(req, res) {
     try {
-        const sanitizedData = sanitizeDefaultParameterRange(req.body);
-        const response = await addDefaultParameterRangeDb(sanitizedData);
+        const sanitizedData = sanitizeHospitalParameterRange(req.body);
+        const response = await addHospitalParameterRangeDb(sanitizedData);
         return response.statusCode === 200
             ? successResponse(res, response)
             : errorResponse(res, response);
@@ -54,11 +58,12 @@ async function addDefaultParameterRange(req, res) {
     }
 }
 
-async function updateDefaultParameterRange(req, res) {
+// Update an existing hospital parameter range
+async function updateHospitalParameterRange(req, res) {
     try {
         const { parameterRangeId } = req.params;
-        const sanitizedData = sanitizeDefaultParameterRange(req.body);
-        const response = await updateDefaultParameterRangeDb(parameterRangeId, sanitizedData);
+        const sanitizedData = sanitizeHospitalParameterRange(req.body);
+        const response = await updateHospitalParameterRangeDb(parameterRangeId, sanitizedData);
         return response.statusCode === 200
             ? successResponse(res, response)
             : errorResponse(res, response);
@@ -67,38 +72,39 @@ async function updateDefaultParameterRange(req, res) {
     }
 }
 
-// Get all parameter ranges for a specific parameter
-async function getAllParameterRangesByParameterId(req, res) {
+// Get all parameter ranges for a specific hospital and parameter
+async function getHospitalParameterRangesByParameterId(req, res) {
     try {
-        const { parameterId } = req.params;
-        const response = await getDefaultParameterRangeByParameterIdDb(parameterId);
-        return response.length > 0
+        const { hospitalId, parameterId } = req.params;
+        const response = await getHospitalParameterRangesByParameterIdDb(hospitalId, parameterId)
+        return response && response.length > 0
             ? successResponse(res, response)
-            : errorResponse(res, response);
+            : errorResponse(res, response || 'No parameter ranges found');
     } catch (error) {
         return errorResponse(res, error.message);
     }
 }
 
 // Get a single parameter range by ID
-async function getSingleParameterRange(req, res) {
+async function getHospitalParameterRangeById(req, res) {
     try {
         const { parameterRangeId } = req.params;
-        const response = await getSingleParameterRangeByIdDb(parameterRangeId);
-        return response.length > 0
-            ? successResponse(res, response)
-            : errorResponse(res, response);
+        const response = await getHospitalParameterRangeByIdDb(parameterRangeId);
+        return response && response.length > 0
+            ? successResponse(res, response[0])
+            : errorResponse(res, 'Parameter range not found', 404);
     } catch (error) {
         return errorResponse(res, error.message);
     }
 }
 
-async function deleteParameterRange(req, res) {
+// Delete a parameter range (soft delete by setting isActive to false)
+async function deleteHospitalParameterRange(req, res) {
     try {
         const { parameterRangeId } = req.params;
-        const response = await deleteDefaultParameterRangeDb(parameterRangeId);
+        const response = await deleteHospitalParameterRangeDb(parameterRangeId);
         return response.statusCode === 200
-            ? successResponse(res, response)
+            ? successResponse(res, { message: 'Parameter range deleted successfully' })
             : errorResponse(res, response);
     } catch (error) {
         return errorResponse(res, error.message);
@@ -106,9 +112,9 @@ async function deleteParameterRange(req, res) {
 }
 
 module.exports = {
-    addDefaultParameterRange,
-    updateDefaultParameterRange,
-    getAllParameterRangesByParameterId,
-    getSingleParameterRange,
-    deleteParameterRange
+    addHospitalParameterRange,
+    updateHospitalParameterRange,
+    getHospitalParameterRangesByParameterId,
+    getHospitalParameterRangeById,
+    deleteHospitalParameterRange
 }
