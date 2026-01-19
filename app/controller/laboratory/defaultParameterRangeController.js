@@ -25,6 +25,9 @@ const sanitizeDefaultParameterRange = (payload = {}) => {
         ...(payload.maxValue !== undefined && {
             maxValue: Number(payload.maxValue)
         }),
+        ...(payload.ageType !== undefined && {
+            ageType: String(payload.ageType)
+        }),
         ...(payload.isActive !== undefined && {
             isActive: Boolean(payload.isActive)
         })

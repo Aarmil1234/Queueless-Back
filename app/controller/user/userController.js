@@ -108,8 +108,27 @@ const userProfile = async (req, res) => {
     const searchQuery = req.body.searchQuery || "";
 
     try {
-        let field = `fullName email mobileNumber address profile`;
-        let data = await selectdatv2(userModel, { _id: userId, delete: false }, field, limit, offset, field, searchQuery, { createdAt: -1 });
+        const fields = `
+            fullName 
+            email 
+            mobileNumber 
+            dob 
+            gender 
+            address 
+            stateId 
+            cityId 
+            zipCode 
+            profile 
+            loginOS 
+            loginAppVersion 
+            loginDevice 
+            registerAppVersion 
+            registerOS 
+            registerDevice
+            createdAt
+            updatedAt
+        `;
+        let data = await selectdatv2(userModel, { _id: userId, delete: false }, fields, limit, offset, fields, searchQuery, { createdAt: -1 });
         if (data.length == 0) {
             return errorResponse(res, 'User not found');
         }

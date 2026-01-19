@@ -16,7 +16,6 @@ const parameterSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        required: true,
         trim: true
     },
     type: {

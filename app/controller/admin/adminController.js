@@ -1673,35 +1673,6 @@ const getSlotsDetails = async (req, res) => {
         }
 
         // Check booked appointments against each hour slot
-        // appointments.forEach(appt => {
-        //     const apptStart = moment(appt.appointmentTime, "HH:mm"); // e.g., "11:20"
-        //     const apptEnd = apptStart.clone().add(averageDuration, "minutes");
-
-        //     hourSlots.forEach(slot => {
-        //         const slotStart = moment(slot.start, "HH:mm");
-        //         const slotEnd = moment(slot.end, "HH:mm");
-
-        //         // If appointment fits in slot => mark slot unavailable
-        //         if (
-        //             (apptStart.isSameOrAfter(slotStart) && apptStart.isBefore(slotEnd)) ||
-        //             (apptEnd.isAfter(slotStart) && apptEnd.isSameOrBefore(slotEnd))
-        //         ) {
-        //             slot.isAvailable = false;
-        //         }
-        //     });
-        // });
-
-        // // Filter only available slots
-        // const availableSlots = hourSlots
-        //     .filter(slot => slot.isAvailable)
-        //     .map(slot => ({
-        //         startTime: slot.start,
-        //         endTime: slot.end,
-        //         timeRange: `${slot.start}-${slot.end}`
-        //     }));
-
-
-        // Check booked appointments against each hour slot
         appointments.forEach(appt => {
             const apptStart = moment(appt.appointmentTime, "HH:mm");
             const apptEnd = moment(apptStart).add(
@@ -1728,7 +1699,6 @@ const getSlotsDetails = async (req, res) => {
                 }
             });
         });
-
 
         // ================== SLOT AVAILABILITY CHECK ==================
 
@@ -1772,6 +1742,24 @@ const getSlotsDetails = async (req, res) => {
                 timeRange: `${slot.start}-${slot.end}`
             }));
 
+        // ================== RESPONSE ==================
+        const currentTime = moment();
+        const currentTimeStr = currentTime.format('HH:mm');
+
+        const futureSlots = availableSlots
+            .filter(slot => {
+                // If the slot is today, check if it's in the future
+                if (moment(date).isSame(currentTime, 'day')) {
+                    return slot.startTime > currentTimeStr;
+                }
+                // If it's a future date, include all slots
+                return true;
+            })
+            .map(slot => ({
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                timeRange: slot.timeRange
+            }));
 
         // ================== RESPONSE ==================
 
@@ -1779,7 +1767,7 @@ const getSlotsDetails = async (req, res) => {
             doctorId,
             date,
             averageDuration,
-            availableSlots
+            availableSlots: futureSlots
         });
 
     } catch (error) {

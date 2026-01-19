@@ -37,6 +37,10 @@ const hospitalCustomParameterRange = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
+    },
+    delete: {
+        type: Boolean,
+        default : false
     }
 }, {
     timestamps: {
