@@ -1,81 +1,96 @@
 const HospitalCustomParameterRange = require('../model/laboratory/hospitalCustomParameterRange');
 const { Responses } = require('../utils/responses');
 
-async function getAllDefaultParameterRangeDb() {
+async function getAllHospitalParameterRangesDb(hospitalId) {
     try {
-        const parameters = await HospitalCustomParameterRange.find({ delete: false }).sort({ create: -1 });
+        const parameters = await HospitalCustomParameterRange.find({ 
+            hospitalId: hospitalId,
+            isActive: true 
+        }).sort({ createdAt: -1 });
         return parameters;
     } catch (error) {
         return [];
     }
 }
 
-async function getDefaultParameterRangeByParameterIdDb(parameterId) {
+async function getHospitalParameterRangesByParameterIdDb(hospitalId, parameterId) {
     try {
-        const parameterRanges = await DefaultParameterRange.find({ parameterId: parameterId, delete: false }).sort({ create: -1 });
+        const parameterRanges = await HospitalCustomParameterRange.find({ 
+            hospitalId: hospitalId,
+            parameterId: parameterId,
+            isActive: true 
+        }).sort({ createdAt: -1 });
         return parameterRanges;
     } catch (error) {
         return [];
     }
 }
 
-async function getSingleParameterRangeByIdDb(id) {
+async function getHospitalParameterRangeByIdDb(id) {
     try {
-        const parameterRange = await DefaultParameterRange.findById(id);
-        return [parameterRange];
+        const parameterRange = await HospitalCustomParameterRange.findById(id);
+        return parameterRange ? [parameterRange] : [];
     } catch (error) {
         return [];
     }
 }
 
-async function addDefaultParameterRangeDb(data) {
+async function addHospitalParameterRangeDb(data) {
     try {
-        const parameterRange = new DefaultParameterRange(data);
+        const parameterRange = new HospitalCustomParameterRange(data);
         await parameterRange.save();
         return Responses.success;
     } catch (error) {
+        console.error('Error adding hospital parameter range:', error);
         return Responses.tryAgain;
     }
 }
 
-async function updateDefaultParameterRangeDb(id, data) {
+async function updateHospitalParameterRangeDb(id, data) {
     try {
-        //check if parameter exists
-        const existingParameterRange = await DefaultParameterRange.findById(id);
+        // Check if parameter range exists
+        const existingParameterRange = await HospitalCustomParameterRange.findById(id);
         if (!existingParameterRange) {
             return Responses.notFound;
         }
-        const updatedParameterRange = await DefaultParameterRange.findByIdAndUpdate(
+        
+        await HospitalCustomParameterRange.findByIdAndUpdate(
             id,
             {
                 ...data,
                 updatedAt: new Date()
             },
             { new: true, runValidators: true }
-        ).lean();
+        );
         return Responses.success;
     } catch (error) {
+        console.error('Error updating hospital parameter range:', error);
         return Responses.tryAgain;
     }
 }
 
-async function deleteDefaultParameterRangeDb(id) {
+async function deleteHospitalParameterRangeDb(id) {
     try {
-        const deletedDefaultParameterRange = await DefaultParameterRange.findByIdAndUpdate(id,
-            {
-                delete: true,
+        // Soft delete by setting isActive to false instead of deleting
+        await HospitalCustomParameterRange.findByIdAndUpdate(id, 
+            { 
+                isActive: false,
                 updatedAt: new Date()
-            }, { new: true }).lean();
+            }, 
+            { new: true }
+        );
         return Responses.success;
     } catch (error) {
+        console.error('Error deleting hospital parameter range:', error);
         return Responses.tryAgain;
     }
 }
 
 module.exports = {
-    getDefaultParameterRangeByParameterIdDb,
-    getSingleParameterRangeByIdDb,
-    addDefaultParameterRangeDb,
-    updateDefaultParameterRangeDb,
-    deleteDefaultParameterRangeDb,
+    getAllHospitalParameterRangesDb,
+    getHospitalParameterRangesByParameterIdDb,
+    getHospitalParameterRangeByIdDb,
+    addHospitalParameterRangeDb,
+    updateHospitalParameterRangeDb,
+    deleteHospitalParameterRangeDb
 }
