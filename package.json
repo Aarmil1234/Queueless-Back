@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "db.js",
   "scripts": {
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "generate": "plop --plopfile generateCrud/plopfile.js"
   },
   "author": "",
   "license": "ISC",

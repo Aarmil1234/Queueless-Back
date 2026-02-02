@@ -10,6 +10,7 @@ const authenticate = require('../../middleware/auth.js');
 // const authenticate = require('../../middleware/auth.js');
 const { storage } = require('../../helper/cloudnary.js');
 const ipdRoutes = require('../../routes/ipdRoutes.js');
+const laboratoryRoutes = require('../../routes/laboratoryRoutes.js');
 
 const specializationController = require('./specializationController.js');
 
@@ -83,5 +84,6 @@ router.post("/editSpecialization/:id", specializationController.editSpecializati
 router.post("/deleteSpecialization/:id", specializationController.deleteSpecialization);
 
 router.use('/ipd', ipdRoutes);
+router.use('/laboratory', laboratoryRoutes);
 
 module.exports = router;

@@ -215,7 +215,21 @@ const getAllIpdPatients = async (req, res) => {
 
 const getAllIpd = async (req, res) => {
     try {
-        const ipdPatients = await IPD.find({ delete: false })
+        const ipdPatients = await IPD.find({ ipdStatus : { $ne : 'Discharged' }, delete: false })
+            .populate('doctorId', 'name specialization')
+            .populate('hospitalId', 'name')
+            .sort({ ipdAdmissionDate: -1 });
+
+        return successResponse(res, 'IPD patients retrieved successfully', ipdPatients);
+    } catch (error) {
+        console.error('Error getting IPD patients:', error);
+        return errorResponse(res, 'Error retrieving IPD patients: ' + error.message);
+    }
+};
+
+const getAllDischargedIpd = async (req, res) => {
+    try {
+        const ipdPatients = await IPD.find({ ipdStatus : 'Discharged', delete: false })
             .populate('doctorId', 'name specialization')
             .populate('hospitalId', 'name')
             .sort({ ipdAdmissionDate: -1 });
@@ -339,6 +353,7 @@ module.exports = {
     getIpdPatientById,
     updateIpdPatient,
     getAllIpd,
+    getAllDischargedIpd,
     dischargeIpdPatient,
     getAllIpdInstructions
 }

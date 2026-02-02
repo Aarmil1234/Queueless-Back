@@ -157,20 +157,20 @@ const adminProfile = async (req, res) => {
 // add hostpital
 const addHospital = async (req, res) => {
     try {
-        const { 
-            ownerName, 
-            socialMediaLinks = '', 
-            name = '', 
-            type, 
-            email, 
-            mobileNumber = '', 
-            address = '', 
+        const {
+            ownerName,
+            socialMediaLinks = '',
+            name = '',
+            type,
+            email,
+            mobileNumber = '',
+            address = '',
             city = '',
             state = '',
             pincode = '',
-            latitude = '', 
-            longitude = '', 
-            content = '[]', 
+            latitude = '',
+            longitude = '',
+            content = '[]',
             password = '',
             specialization,
         } = req.body;
@@ -193,7 +193,7 @@ const addHospital = async (req, res) => {
 
         let specializations = [];
         const specializationModel = require('../../model/specialization');
-        
+
         if (type === 'Multispeciality' && Array.isArray(specialization)) {
             specializations = specialization;
         } else if (type === 'Speciality' && specialization) {
@@ -214,23 +214,23 @@ const addHospital = async (req, res) => {
         }
 
         // Prepare hospital data
-        const hospitalData = { 
-            ownerName, 
-            socialMediaLinks, 
-            name, 
-            email, 
-            mobileNumber, 
+        const hospitalData = {
+            ownerName,
+            socialMediaLinks,
+            name,
+            email,
+            mobileNumber,
             address,
             city,
             state,
             pincode,
-            latitude, 
-            longitude, 
+            latitude,
+            longitude,
             type,
             specialization: specializations, // Store array of specialization IDs
             otherSpecialization, // Store custom text if any
             content: contentJson,
-            password: password ? md5(password) : undefined 
+            password: password ? md5(password) : undefined
         };
         if (profile.length != 0) {
             hospitalData['profile'] = `admin/profiles/` + profile[0]['filename']
@@ -1469,15 +1469,17 @@ const addAppointmentV2 = async (req, res) => {
             return errorResponse(res, 'Error creating appointment');
         }
 
+        // Parse startTime and add duration in minutes
+
         // Build appointment detail data
-        const appointmentDetailField = {
+        let appointmentDetailField = {
             userId,
             disease,
             doctorId,
             duration: `${durationValue}`,
             appointmentDate,
             appointmentTime: chosenSlot.start.format("HH:mm"),
-            startTime: startTime ? startTime : appointmentTime,
+            startTime: chosenSlot.start.format("HH:mm"),
             endTime: endTime,
             chiefComplaints,
             probableDiagnosis,
@@ -1485,6 +1487,8 @@ const addAppointmentV2 = async (req, res) => {
             appointmentId: savedAppointment._id,
             create: new Date()
         };
+
+        appointmentDetailField.endTime = moment(appointmentDetailField.appointmentTime, 'HH:mm').add(durationValue, 'minutes').format('HH:mm');
 
         // Only add appointmentuserId if it's valid
         if (appointmentuserId && mongoose.Types.ObjectId.isValid(appointmentuserId)) {
@@ -1582,9 +1586,17 @@ const getSlotsDetails = async (req, res) => {
 
         let averageDuration = doctorDetails.averageAppointmentTime;
 
+        // Convert input date to YYYY-MM-DD format for exact date comparison
+        const dateStr = moment(date).format('YYYY-MM-DD');
+
         const appointments = await appointmentdetail.find({
             doctorId,
-            appointmentDate: date,
+            $expr: {
+                $eq: [
+                    { $dateToString: { format: '%Y-%m-%d', date: '$appointmentDate' } },
+                    dateStr
+                ]
+            },
             delete: false
         });
 
@@ -1662,38 +1674,102 @@ const getSlotsDetails = async (req, res) => {
 
         // Check booked appointments against each hour slot
         appointments.forEach(appt => {
-            const apptStart = moment(appt.appointmentTime, "HH:mm"); // e.g., "11:20"
-            const apptEnd = apptStart.clone().add(averageDuration, "minutes");
+            const apptStart = moment(appt.appointmentTime, "HH:mm");
+            const apptEnd = moment(apptStart).add(
+                parseInt(appt.duration || averageDuration),
+                "minutes"
+            );
 
             hourSlots.forEach(slot => {
                 const slotStart = moment(slot.start, "HH:mm");
                 const slotEnd = moment(slot.end, "HH:mm");
 
-                // If appointment fits in slot => mark slot unavailable
+                // Overlap check (UNCHANGED)
                 if (
                     (apptStart.isSameOrAfter(slotStart) && apptStart.isBefore(slotEnd)) ||
-                    (apptEnd.isAfter(slotStart) && apptEnd.isSameOrBefore(slotEnd))
+                    (apptEnd.isAfter(slotStart) && apptEnd.isSameOrBefore(slotEnd)) ||
+                    (apptStart.isSameOrBefore(slotStart) && apptEnd.isSameOrAfter(slotEnd))
                 ) {
-                    slot.isAvailable = false;
+                    if (!slot.unavailableRanges) slot.unavailableRanges = [];
+
+                    slot.unavailableRanges.push({
+                        start: apptStart.format("HH:mm"),
+                        end: apptEnd.format("HH:mm")
+                    });
                 }
             });
         });
 
-        // Filter only available slots
-        const availableSlots = hourSlots
-            .filter(slot => slot.isAvailable)
+        // ================== SLOT AVAILABILITY CHECK ==================
+
+        const availableSlots = hourSlots.filter(slot => {
+            const slotStart = moment(slot.start, "HH:mm");
+            const slotEnd = moment(slot.end, "HH:mm");
+
+            // If no bookings → slot fully available
+            if (!slot.unavailableRanges || slot.unavailableRanges.length === 0) {
+                return slotEnd.diff(slotStart, "minutes") >= 5;
+            }
+
+            // Sort booked ranges
+            const sortedRanges = [...slot.unavailableRanges].sort((a, b) =>
+                moment(a.start, "HH:mm").diff(moment(b.start, "HH:mm"))
+            );
+
+            let currentStart = slotStart.clone();
+
+            for (const range of sortedRanges) {
+                const rangeStart = moment(range.start, "HH:mm");
+
+                // Check gap before booking
+                const freeMinutes = rangeStart.diff(currentStart, "minutes");
+                if (freeMinutes >= 5) {
+                    return true; // SLOT IS AVAILABLE → RETURN FULL SLOT
+                }
+
+                currentStart = moment.max(
+                    currentStart,
+                    moment(range.end, "HH:mm")
+                );
+            }
+
+            // Check gap after last booking
+            return slotEnd.diff(currentStart, "minutes") >= 5;
+        })
             .map(slot => ({
                 startTime: slot.start,
                 endTime: slot.end,
                 timeRange: `${slot.start}-${slot.end}`
             }));
 
+        // ================== RESPONSE ==================
+        const currentTime = moment();
+        const currentTimeStr = currentTime.format('HH:mm');
+
+        const futureSlots = availableSlots
+            .filter(slot => {
+                // If the slot is today, check if it's in the future
+                if (moment(date).isSame(currentTime, 'day')) {
+                    return slot.startTime > currentTimeStr;
+                }
+                // If it's a future date, include all slots
+                return true;
+            })
+            .map(slot => ({
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                timeRange: slot.timeRange
+            }));
+
+        // ================== RESPONSE ==================
+
         return successResponse(res, "Available slots fetched successfully", {
             doctorId,
             date,
             averageDuration,
-            availableSlots
+            availableSlots: futureSlots
         });
+
     } catch (error) {
         console.error('Error fetching slots:', error);
         return errorResponse(res, 'Error fetching slots: ' + error.message);
@@ -2020,7 +2096,7 @@ const getAppointmentsWithDetails = async (req, res) => {
 
         if (appointmentId) {
             matchConditions._id = mongoose.Types.ObjectId(appointmentId);
-        }   
+        }
 
         if (status && ["Ongoing", "Completed"].includes(status)) {
             matchConditions.status = status;
@@ -2723,7 +2799,7 @@ const getAllSpecializations = async (req, res) => {
     try {
         // Get all hospital specializations (array of specialization IDs)
         const hospitals = await hospitalModel.find({ delete: false }, { specialization: 1 });
-        
+
         // Get all specialization IDs from hospitals
         const specializationIds = [
             ...new Set(
