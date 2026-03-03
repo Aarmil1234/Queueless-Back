@@ -10,6 +10,13 @@ const port = 3000;
 // Middleware
 app.use(express.json()); // Parse incoming JSON requests
 
+const path = require("path");
+
+app.use(
+    "/uploads",
+    express.static(path.join(__dirname, "uploads"))
+);
+
 // Connect to MongoDB
 connectToMongo();
 app.use(cors());

@@ -222,11 +222,44 @@ const searchDoctorsAndHospitalsByName = async (req, res) => {
     }
 };
 
+const getDashboardImages = async (req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, "../uploads/dashboard");
+
+        // Read all files from dashboard folder
+        const files = fs.readdirSync(directoryPath);
+
+        if (!files || files.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No images found in dashboard folder",
+            });
+        }
+
+        // Filter only image files (optional but recommended)
+        const imageFiles = files.filter((file) =>
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
+        );
+
+        // Return only first 3 images
+        const dashboardImages = imageFiles.slice(0, 3).map((file) => ({
+            name: file,
+            url: `${req.protocol}://${req.get("host")}/uploads/dashboard/${file}`,
+        }));
+
+        return successResponse(res, 'Images Fetched successfully', dashboardImages)
+    } catch (error) {
+        console.error("Error fetching dashboard images:", error);
+        return errorResponse(res, 'Error fetching search results');
+    }
+};
+
 module.exports = {
     addEditUser,
     login,
     userProfile,
     verifyOtp,
     registrationOtp,
-    searchDoctorsAndHospitalsByName
+    searchDoctorsAndHospitalsByName,
+    getDashboardImages
 }

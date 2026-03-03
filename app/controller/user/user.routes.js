@@ -11,7 +11,6 @@ const authenticate = require('../../middleware/auth.js');
 const app = express();
 const router = express.Router();
 
-
 const userProfile = multer.diskStorage({
     destination: (req, file, cb) => {
         const uploadPath = path.join(__dirname, '../uploads/user/profiles');
@@ -40,6 +39,7 @@ router.post('/registerationOtp', controller.registrationOtp);
 router.post('/verifyotp', controller.verifyOtp);
 router.post('/userprofile', controller.userProfile);
 router.post("/searchDoctorsAndHospitalsByName", controller.searchDoctorsAndHospitalsByName);
+router.get("/getDashboardImages", controller.getDashboardImages);
 
 
 module.exports = router;
