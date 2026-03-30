@@ -224,7 +224,7 @@ const searchDoctorsAndHospitalsByName = async (req, res) => {
 
 const getDashboardImages = async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, "../uploads/dashboard");
+        const directoryPath = path.join(__dirname, "../../../uploads/dashboard");
 
         // Read all files from dashboard folder
         const files = fs.readdirSync(directoryPath);
