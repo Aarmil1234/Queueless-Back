@@ -20,6 +20,17 @@ function generateOTP(length = 6) {
 }
 
 async function sendOTP(mobileNumber) {
+    // Development mode bypass
+    if (process.env.NODE_ENV === 'development') {
+        const devOtp = '123456';
+        console.log("Development mode: Using fixed OTP 123456");
+        const addOtpVerificationResult = await addOtpVerification(mobileNumber, devOtp);
+        if (!addOtpVerificationResult) {
+            return { success: false, otp: null, error: "Failed to add OTP verification" };
+        }
+        return { success: true, otp: devOtp, response: "Development mode - OTP bypassed" };
+    }
+
     const otp = generateOTP();
 
     // 🚨 MUST match template exactly with {#var#} replaced
@@ -76,6 +87,20 @@ async function addOtpVerification(mobileNumber, otp) {
 
 async function verifyOtpDB(mobileNumber, otp) {
     try {
+        // Development mode bypass
+        if (process.env.NODE_ENV === 'development' && otp === '123456') {
+            console.log("Development mode: OTP verification bypassed");
+            const otpVerification = await OtpVerification.findOne({ mobileNumber });
+            if (!otpVerification) {
+                // Create OTP entry for development if it doesn't exist
+                await addOtpVerification(mobileNumber, '123456');
+            }
+            return {
+                status : true,
+                message : "OTP verified successfully (Development mode)"
+            };
+        }
+
         const otpVerification = await OtpVerification.findOne({ mobileNumber });
         if (!otpVerification) {
             return {
